@@ -19,7 +19,7 @@ print(f"Using {device} device")
 input_size = 784
 hidden_size = 128
 num_classes = 10
-num_epochs = 5
+num_epochs = 25
 batch_size = 64
 learning_rate = 0.001
 
@@ -45,7 +45,7 @@ class SimpleNN(nn.Module):
         self.fc2 = nn.Linear(hidden_size, num_classes)
 
     def forward(self, x):
-        x = x.view(-1, input_size)  # Flatten the input
+        x = x.view(-1, input_size)
         x = self.fc1(x)
         x = self.relu(x)
         x = self.fc2(x)
@@ -88,4 +88,4 @@ with torch.no_grad():
     print(f'Accuracy: {100 * correct / total:.2f}%')
 
 # Save the model
-torch.save(model.state_dict(), 'simple_nn.pth')
+torch.save(model.state_dict(), 'number.pth')

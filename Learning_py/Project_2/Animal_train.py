@@ -17,8 +17,12 @@ transform = transforms.Compose([
     transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))  # CIFAR-10 stats
 ])
 
+batch_size = 64
+
 train_dataset = datasets.CIFAR10(root='./data', train=True, download=True, transform=transform)
 test_dataset = datasets.CIFAR10(root='./data', train=False, download=True, transform=transform)
+test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
+train_loader = torch.utils.data.DataLoader(dataset=train_dataset, batch_size=batch_size, shuffle=True)
 
 animal_classes = {'bird', 'cat', 'deer', 'dog', 'frog', 'horse'}  
 non_animal_classes = {'airplane', 'automobile', 'ship', 'truck'}  
@@ -71,14 +75,12 @@ model.eval()
 with torch.no_grad():
     correct = 0
     total = 0
-    for images, labels in test_dataset:  # Now properly batched tensors
+    for images, labels in test_loader:  # Now labels are batched (shape [batch_size])
         images, labels = images.to(device), labels.to(device)
         outputs = model(images)
         _, predicted = torch.max(outputs.data, 1)
-        total += labels.size(0)
+        total += labels.size(0)  # Now this works (labels are [batch_size])
         correct += (predicted == labels).sum().item()
-
-    print(f'Accuracy: {100 * correct / total:.2f}%')
 
 # Save the model
 torch.save(model.state_dict(), 'animal.pth')

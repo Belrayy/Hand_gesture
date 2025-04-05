@@ -136,5 +136,10 @@ for epoch in range(num_epochs):
 
     print(f"Epoch {epoch+1} completed, Avg Loss: {running_loss/len(dataloader):.4f}")
 
-torch.save(model.state_dict(), 'optimized_bird.pth')
-print("Training complete")
+# torch.save(model.state_dict(), 'optimized_bird.pth')
+# print("Training complete")
+
+input_size = torch.randn(1, 3, 224, 224).to(device)
+traced_model = torch.jit.trace(model, input_size)
+traced_model.save("optimized_bird.pt")
+print("Model saved as optimized_bird.pt")

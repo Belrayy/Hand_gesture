@@ -1,0 +1,62 @@
+type: edu
+files:
+  - name: src/Task.kt
+    visible: true
+    placeholders:
+      - offset: 72
+        length: 6
+        placeholder_text: TODO()
+        initial_state:
+          length: 6
+          offset: 72
+        initialized_from_dependency: false
+        encrypted_possible_answer: 0jTQ2/y+bX7DpTLUxdQUmg==
+        selected: false
+        status: Unchecked
+      - offset: 101
+        length: 6
+        placeholder_text: TODO()
+        initial_state:
+          length: 6
+          offset: 101
+        initialized_from_dependency: false
+        encrypted_possible_answer: OQRt2jAjSqs/opsojU2ziv75WtpqXozBKa0U4k1km4XH+aCH/f05CZtd7sn0/v9R
+        selected: false
+        status: Unchecked
+      - offset: 119
+        length: 14
+        placeholder_text: interface Expr
+        initial_state:
+          length: 14
+          offset: 119
+        initialized_from_dependency: false
+        encrypted_possible_answer: sSDd6IW/jyIN5mHgg8ur5oyi1zWIYEzXpjiuH8Mf5mQ=
+        selected: false
+        status: Unchecked
+      - offset: 162
+        length: 6
+        placeholder_text: TODO()
+        initial_state:
+          length: 6
+          offset: 162
+        initialized_from_dependency: false
+        encrypted_possible_answer: CuldPLB6nkzjojEM8JmcGQ==
+        selected: false
+        status: Unchecked
+      - offset: 214
+        length: 6
+        placeholder_text: TODO()
+        initial_state:
+          length: 6
+          offset: 214
+        initialized_from_dependency: false
+        encrypted_possible_answer: CuldPLB6nkzjojEM8JmcGQ==
+        selected: false
+        status: Unchecked
+    learner_created: false
+  - name: test/Tests.kt
+    visible: false
+    learner_created: false
+feedback_link: https://docs.google.com/forms/d/e/1FAIpQLSeYool5qTz-p77fzn_9UKQVjO3u3Al6WjzEyW5cbjspRwtQig/viewform?usp=pp_url&entry.2103429047=Classes+/+Sealed+Classes
+status: Unchecked
+record: -1

@@ -10,7 +10,7 @@ class VideoRecorderApp:
     def __init__(self, root):
         self.root = root
         self.root.title("Video Recorder")
-        self.root.geometry("800x600")
+        self.root.geometry("1280x720")
         
         # Video recording variables
         self.is_recording = False
@@ -137,7 +137,7 @@ class VideoRecorderApp:
         ret, frame = self.cap.read()
         if ret:
             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            frame = self.resize_with_aspect_ratio(frame, width=640)
+            frame = self.resize_with_aspect_ratio(frame, width=1280, height=720)
             
             img = Image.fromarray(frame)
             imgtk = ImageTk.PhotoImage(image=img)

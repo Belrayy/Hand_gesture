@@ -31,6 +31,9 @@ class HandDataset(Dataset):
                 transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
             ])
 
+    def __len__(self):
+        return len(self.annotations)
+
     def __getitem__(self, idx):
         if torch.is_tensor(idx):
             idx = idx.tolist()
@@ -185,7 +188,7 @@ criterion=nn.CrossEntropyLoss()
 optimizer=torch.optim.Adam(model.parameters(),lr=learning_rate)
 scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', patience=3)
 
-scaler = torch.amp.GradScaler(device_type=device)
+scaler = torch.amp.GradScaler()
 
 for epoch in range(num_epochs):
 

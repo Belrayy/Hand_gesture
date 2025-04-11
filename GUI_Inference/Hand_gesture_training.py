@@ -8,7 +8,7 @@ import numpy as np # type: ignore
 from torch.cuda.amp import GradScaler, autocast   # type: ignore
 import pandas as pd # type: ignore
 import cv2 # type: ignore
-
+import time
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(f"Using {device} device")
@@ -16,12 +16,16 @@ print(f"Using {device} device")
 
 class HandDataset(Dataset):
     def __init__(self, root_dir, csv_file, transform=None, frames_clip=30, resize=(100,100)):
-        self.root_dir = str(root_dir)  # Ensure root_dir is string
-        # Read CSV ensuring first column is string
-        self.annotations = pd.read_csv(csv_file, dtype={0: str})  # Force first column as string
+        self.root_dir = str(root_dir)
+        self.annotations = pd.read_csv(csv_file)
         self.transform = transform
         self.frames_clip = frames_clip
         self.resize = resize
+        
+        # Create label mapping
+        self.labels = sorted(self.annotations['label'].unique())
+        self.label_to_idx = {label: idx for idx, label in enumerate(self.labels)}
+        self.num_classes = len(self.labels)
 
         if transform is None:
             self.transform = transforms.Compose([
@@ -38,10 +42,13 @@ class HandDataset(Dataset):
         if torch.is_tensor(idx):
             idx = idx.tolist()
             
-        # Ensure video_folder is string
-        video_folder = str(self.annotations.iloc[idx, 0])  # Convert to string
-        video_path = os.path.join(self.root_dir, video_folder)
-        label = int(self.annotations.iloc[idx, 1])  # Ensure label is int
+        # Get video_id from the 'video_id' column
+        video_id = str(self.annotations.iloc[idx]['video_id'])
+        video_path = os.path.join(self.root_dir, video_id)
+        
+        # Get label and convert to index
+        label_str = str(self.annotations.iloc[idx]['label'])
+        label = self.label_to_idx[label_str]
 
         frames = []
         frame_files = sorted([f for f in os.listdir(video_path) if f.endswith('.jpg')])
@@ -182,7 +189,7 @@ class HandCNN(nn.Module):
         return x
     
 
-model=HandCNN().to(device)
+model = HandCNN(num_classes=train_dataset.num_classes).to(device)
 
 criterion=nn.CrossEntropyLoss()
 optimizer=torch.optim.Adam(model.parameters(),lr=learning_rate)

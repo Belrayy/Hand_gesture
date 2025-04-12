@@ -1,0 +1,7 @@
+TSM_kinetics_RGB_mobilenetv2_shift8_blockres_avg_segment8_e100_dense.pth
+||
+Mobile.pth
+
+TSM_kinetics_RGB_resnet50_shift8_blockres_avg_segment8_e100_dense.pth
+||
+Pc.pth

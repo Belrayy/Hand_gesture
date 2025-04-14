@@ -179,9 +179,10 @@ class VideoAnalysisApp:
         # Update results
         self.results_text.delete(1.0, tk.END)
         self.results_text.insert(tk.END, "Top Predictions:\n")
-        for prob, idx in zip(top5_probs, top5_indices):
-            self.results_text.insert(tk.END, 
-                f"- {self.labels[str(idx.item())]}: {prob.item()*100:.1f}%\n")
+        best_prob = top5_probs[0]
+        best_idx = top5_indices[0]
+        self.results_text.insert(tk.END, 
+                                 f"- {self.labels[str(best_idx.item())]}: {best_prob.item()*100:.1f}% confidence")
         
         self.status_var.set("Prediction complete")
     

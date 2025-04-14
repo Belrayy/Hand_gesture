@@ -13,25 +13,23 @@ sys.path.append('/Pre_trained/Inference/temporal_shift_module/ops')
 from Pre_trained.Inference.temporal_shift_module.ops.temporal_shift import make_temporal_shift  # Import from your temporal_shift.py
 
 def load_model(checkpoint_path, num_classes, num_segments):
-    # 1. Create base ResNet model with pretrained ImageNet weights
-    base_model = models.resnet50(weights=False)
+    # 1. Create base ResNet model
+    base_model = models.resnet50(weights=False)  # Ensure backbone matches the checkpoint
     
-    # 2. Modify the model with temporal shifts
+    # 2. Add temporal shifts
     make_temporal_shift(base_model, num_segments, n_div=8, place='blockres')
     
-    # 3. Replace the final fully connected layer
+    # 3. Replace the final layer for Jester
     feature_dim = base_model.fc.in_features
-    base_model.fc = nn.Linear(feature_dim, num_classes)
+    base_model.fc = nn.Linear(feature_dim, num_classes)  # Now 27 classes
     
     # 4. Load checkpoint
     checkpoint = torch.load(checkpoint_path, map_location='cpu')
     state_dict = checkpoint['state_dict']
     
-    # Adjust for DataParallel wrapping
-    # Adjust for DataParallel and key renaming
+    # 5. Adjust state_dict keys
     new_state_dict = {}
     for k, v in state_dict.items():
-    # Remove prefixes
         if k.startswith('module.base_model.'):
             name = k[len('module.base_model.'):]
         elif k.startswith('base_model.'):
@@ -40,19 +38,18 @@ def load_model(checkpoint_path, num_classes, num_segments):
             name = k[len('module.'):]
         else:
             name = k
-
-    # Rename final FC layer
-    name = name.replace('new_fc', 'fc')
+        name = name.replace('new_fc', 'fc').replace('.net', '')
+        new_state_dict[name] = v
     
-    # Remove nested 'net' layers like 'conv1.net.weight' -> 'conv1.weight'
-    name = name.replace('.net', '')
-
-    new_state_dict[name] = v
-
-
+    # 6. Remove conflicting keys (add this block)
+    keys = list(new_state_dict.keys())
+    for key in keys:
+        if key.startswith('fc.'):
+            del new_state_dict[key]
     
-    base_model.load_state_dict(new_state_dict,strict=False)
-    base_model.eval()  # Set to evaluation mode
+    # 7. Load weights (strict=False to ignore missing keys)
+    base_model.load_state_dict(new_state_dict, strict=False)
+    base_model.eval()
     return base_model
 
 def preprocess_frames(frames, transform):
@@ -75,11 +72,11 @@ def main():
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     
     # Configuration
-    checkpoint_path = 'Pre_trained/PC.pth'
-    num_classes = 400  # Kinetics-400 classes
-    num_segments = 8
-    video_dir = 'data/archive/Test/2'  # Directory containing extracted frames
-    label_file = 'Pre_trained/Inference/kinetics_labels.json'  # Path to label mappings
+    checkpoint_path = 'Pre_trained/PC.pth'  # Path to Jester checkpoint
+    num_classes = 27  # 20BN-Jester has 27 classes
+    num_segments = 8  # Verify if your Jester model uses 8 segments
+    video_dir = 'data/archive/Validation/22'  
+    label_file = 'Pre_trained/Inference/jester_labels.json'  # Jester label mappings
     
     # Load model
     model = load_model(checkpoint_path, num_classes, num_segments)

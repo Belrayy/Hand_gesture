@@ -1,40 +1,59 @@
 import torch # type: ignore
-import torch.nn as nn  # type: ignore
-import torchvision.transforms as transforms  # type: ignore
-from PIL import Image  # type: ignore
+import torch.nn as nn # type: ignore
+import torchvision.transforms as transforms # type: ignore
+import torchvision.models as models # type: ignore
+from PIL import Image # type: ignore
 import json
 import os
-import numpy as np  # type: ignore
+import numpy as np # type: ignore
 import sys
 
 # Add the TSM repository directory to the Python path
-sys.path.append('/Pre_trained/Inference/temporal-shift-module')
-from Pre_trained.Inference.temporal_shift_module.ops.temporal_shift import TemporalShift
+sys.path.append('/Pre_trained/Inference/temporal_shift_module/ops')
+from Pre_trained.Inference.temporal_shift_module.ops.temporal_shift import make_temporal_shift  # Import from your temporal_shift.py
 
 def load_model(checkpoint_path, num_classes, num_segments):
-    # Initialize the TSM model
-    model = TemporalShift(num_classes, n_segment=num_segments, modality='RGB',
-                base_model='resnet50', consensus_type='avg',
-                dropout=0.5, partial_bn=False, pretrain='imagenet',
-                is_shift=True, shift_div=8, shift_place='blockres',
-                non_local=False, temporal_pool=False)
+    # 1. Create base ResNet model with pretrained ImageNet weights
+    base_model = models.resnet50(weights=False)
     
-    # Load checkpoint
+    # 2. Modify the model with temporal shifts
+    make_temporal_shift(base_model, num_segments, n_div=8, place='blockres')
+    
+    # 3. Replace the final fully connected layer
+    feature_dim = base_model.fc.in_features
+    base_model.fc = nn.Linear(feature_dim, num_classes)
+    
+    # 4. Load checkpoint
     checkpoint = torch.load(checkpoint_path, map_location='cpu')
     state_dict = checkpoint['state_dict']
     
     # Adjust for DataParallel wrapping
+    # Adjust for DataParallel and key renaming
     new_state_dict = {}
     for k, v in state_dict.items():
-        if k.startswith('module.'):
-            name = k[7:]  # Remove 'module.' prefix
+    # Remove prefixes
+        if k.startswith('module.base_model.'):
+            name = k[len('module.base_model.'):]
+        elif k.startswith('base_model.'):
+            name = k[len('base_model.'):]
+        elif k.startswith('module.'):
+            name = k[len('module.'):]
         else:
             name = k
-        new_state_dict[name] = v
-    model.load_state_dict(new_state_dict)
+
+    # Rename final FC layer
+    name = name.replace('new_fc', 'fc')
     
-    model.eval()  # Set to evaluation mode
-    return model
+    # Remove nested 'net' layers like 'conv1.net.weight' -> 'conv1.weight'
+    name = name.replace('.net', '')
+
+    new_state_dict[name] = v
+
+
+    
+    base_model.load_state_dict(new_state_dict,strict=False)
+    base_model.eval()  # Set to evaluation mode
+    return base_model
 
 def preprocess_frames(frames, transform):
     # Apply transforms and stack frames
@@ -76,7 +95,11 @@ def main():
     
     # Sample and preprocess frames
     frames = sample_frames(video_dir, num_segments)
-    input_tensor = preprocess_frames(frames, transform).to(device)
+    input_tensor = preprocess_frames(frames, transform)
+    
+    # Reshape input for TSM (batch_size * num_segments, C, H, W)
+    input_tensor = input_tensor.unsqueeze(0)  # Add batch dimension
+    input_tensor = input_tensor.view(-1, 3, 224, 224).to(device)
     
     # Run inference
     with torch.no_grad():

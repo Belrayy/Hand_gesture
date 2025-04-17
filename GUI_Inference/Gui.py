@@ -10,7 +10,7 @@ class VideoRecorderApp:
     def __init__(self, root):
         self.root = root
         self.root.title("Video Recorder")
-        self.root.geometry("1280x720")
+        self.root.geometry("600x400")
         
         # Video recording variables
         self.is_recording = False
@@ -83,7 +83,7 @@ class VideoRecorderApp:
             return
             
         if self.cap is None:
-            self.cap = cv2.VideoCapture(0)
+            self.cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
             if not self.cap.isOpened():
                 messagebox.showerror("Error", "Could not open video device")
                 return
@@ -137,7 +137,7 @@ class VideoRecorderApp:
         ret, frame = self.cap.read()
         if ret:
             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            frame = self.resize_with_aspect_ratio(frame, width=1280, height=720)
+            frame = self.resize_with_aspect_ratio(frame, width=600, height=400)
             
             img = Image.fromarray(frame)
             imgtk = ImageTk.PhotoImage(image=img)
@@ -149,7 +149,7 @@ class VideoRecorderApp:
                 original_frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
                 self.video_writer.write(original_frame)
         
-        self.video_frame.after(10, self.preview_video)
+        self.video_frame.after(30, self.preview_video)
     
     def resize_with_aspect_ratio(self, image, width=None, height=None, inter=cv2.INTER_AREA):
         dim = None

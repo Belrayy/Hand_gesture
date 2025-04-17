@@ -15,7 +15,7 @@ import tempfile
 import sys
 
 sys.path.append('/Pre_trained/Inference/temporal_shift_module/ops')
-from Pre_trained.Inference.temporal_shift_module.ops.temporal_shift import make_temporal_shift
+from Pre_trained.Inference.temporal_shift_module.ops.temporal_shift import make_temporal_shift  # type: ignore
 
 class VideoAnalysisApp:
     def __init__(self, root):

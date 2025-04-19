@@ -1,9 +1,0 @@
-content:
-  - "Hello, world"
-  - Named arguments
-  - Default arguments
-  - Triple-quoted strings
-  - String templates
-  - Nullable types
-  - Nothing type
-  - Lambdas

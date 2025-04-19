@@ -1,0 +1,10 @@
+name: Skip Submodules Example
+on: [push]  # Runs on every push
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: false  # ← Skips submodules
+      - run: echo "Submodules skipped, no errors!"

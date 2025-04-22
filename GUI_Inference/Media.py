@@ -14,7 +14,7 @@ class VideoRecorderApp:
         self.root = root
         self.root.title("Hand Gesture Video Recorder")
         
-        # Variables
+        
         self.recording = False
         self.start_time = None
         self.output_folder = ""
@@ -22,13 +22,13 @@ class VideoRecorderApp:
         self.out = None
         self.hands = None
         
-        # Show folder selection dialog before setting up the rest
+        
         self.output_folder = self.show_initial_folder_dialog()
         if not self.output_folder:
             self.root.destroy()
             return
         
-        # MediaPipe setup
+        
         self.mp_hands = mp.solutions.hands
         self.hands = self.mp_hands.Hands(
             static_image_mode=False,
@@ -37,25 +37,25 @@ class VideoRecorderApp:
             min_tracking_confidence=0.5)
         self.mp_drawing = mp.solutions.drawing_utils
         
-        # GUI Elements (without folder selection UI)
+        
         self.create_widgets()
         
-        # Start video capture
+        
         self.cap = cv2.VideoCapture(0)
         if not self.cap.isOpened():
-            messagebox.showerror("Error", "Could not open video device")
+            messagebox.showerror("Error", "Could not open video device") # type: ignore
             self.root.destroy()
             return
         
-        # Start video preview
+        
         self.update_preview()
     
     def show_initial_folder_dialog(self):
         """Show folder selection dialog before main window appears"""
         temp_root = tk.Tk()
-        temp_root.withdraw()  # Hide the temporary root window
+        temp_root.withdraw()  
         
-        # Set default directory to user's Videos folder
+        
         initial_dir = os.path.dirname(os.path.abspath(__file__))
         
         folder = filedialog.askdirectory(
@@ -65,10 +65,10 @@ class VideoRecorderApp:
         )
         
         if not folder:
-            messagebox.showwarning("Warning", "You must select a folder to continue")
+            messagebox.showwarning("Warning", "You must select a folder to continue") # type: ignore
             return ""
         
-        # Create recordings subfolder if it doesn't exist
+        
         recordings_folder = os.path.join(folder, "Gesture_Recordings")
         os.makedirs(recordings_folder, exist_ok=True)
         
@@ -77,11 +77,11 @@ class VideoRecorderApp:
     
     def create_widgets(self):
         """Create GUI elements without folder selection UI"""
-        # Preview
+        
         self.preview_label = tk.Label(self.root)
         self.preview_label.pack()
         
-        # Timer and status
+        
         status_frame = tk.Frame(self.root)
         status_frame.pack(pady=10)
         
@@ -91,11 +91,11 @@ class VideoRecorderApp:
         self.status_label = tk.Label(status_frame, text="Ready", font=('Arial', 14))
         self.status_label.pack(side=tk.LEFT, padx=10)
         
-        # Gesture display
+        
         self.gesture_label = tk.Label(self.root, text="Gesture: None", font=('Arial', 16))
         self.gesture_label.pack(pady=5)
         
-        # Buttons
+        
         button_frame = tk.Frame(self.root)
         button_frame.pack(pady=10)
         
@@ -229,10 +229,10 @@ class VideoRecorderApp:
         return frame, gesture
     
     def detect_gesture(self, hand_landmarks):
-        # Try to get handedness from the last MediaPipe results
+        
         handedness = "Right"
         if hasattr(self.hands, 'last_results') and hasattr(self.hands.last_results, 'multi_handedness'):
-            # Find the handedness for this hand
+            
             for idx, hand in enumerate(self.hands.last_results.multi_hand_landmarks):
                 if hand == hand_landmarks:
                     handedness = self.hands.last_results.multi_handedness[idx].classification[0].label
@@ -274,12 +274,28 @@ class VideoRecorderApp:
         if fingers == [True, False, False, False, True]:
             return "Hang Loose"
         if fingers == [False, True, True, True, True]:
-            return "Four"
+            return "Number Four"
         if fingers == [False, True, True, False, True]:
-            return "Three"
+            return "Number Three"
         if fingers == [False, True, False, False, True]:
             return "Two"
-
+        if fingers == [True, False, True, False, True]:
+            return "Spider-Man"
+        if fingers == [True, False, False, True, True]:
+            return "Rock-on"
+        if fingers == [False, True, True, False, False] and self._thumb_touching_index(landmarks):
+            return "Okay"
+        if fingers == [True, False, False, False, False] and self._pinky_extended(landmarks):
+            return "Call Me"
+        if fingers == [False, True, False, False, False] and not finger_extended(landmarks[12], landmarks[10], landmarks[9]):
+            return "Closed Fist with Pointing Index"
+        if fingers == [True, True, True, True, True] and self._flat_palm(landmarks):
+            return "Flat Hand"
+        if fingers == [False, True, True, False, False]:
+            return "Victory"
+        if fingers == [False, True, False, False, False] and self._index_extended_only(landmarks):
+            return "Gun"
+    
         return "Unknown"
     
     def update_gesture_display(self, gesture):
@@ -310,7 +326,7 @@ class VideoRecorderApp:
 if __name__ == "__main__":
     root = tk.Tk()
     
-    # Set window position to center
+    
     window_width = 800
     window_height = 600
     screen_width = root.winfo_screenwidth()

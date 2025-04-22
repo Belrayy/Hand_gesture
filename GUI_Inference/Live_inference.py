@@ -15,7 +15,7 @@ from collections import deque
 import sys
 
 sys.path.append('/Pre_trained/Inference/temporal_shift_module/ops')
-from Pre_trained.Inference.temporal_shift_module.ops.temporal_shift import make_temporal_shift  
+from Pre_trained.Inference.temporal_shift_module.ops.temporal_shift import make_temporal_shift  # type: ignore
 
 class GestureRecognitionApp:
     def __init__(self, root):
@@ -124,7 +124,7 @@ class GestureRecognitionApp:
             self.status_var.set("Loading model...")
             self.root.update()
             
-            checkpoint_path = 'Pre_trained/PC_2.pth'
+            checkpoint_path = 'Pre_trained/PC.pth'
             num_classes = 27
             num_segments = 8
             

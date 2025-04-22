@@ -13,6 +13,7 @@ import json
 import numpy as np # type: ignore
 from collections import deque
 import sys 
+from ultralytics import YOLO 
 
 
 # Hagrid v2 gesture labels
@@ -51,8 +52,9 @@ class GestureRecognitionApp:
         
         # Initialize components
         self.select_output_directory()
-        self.load_model()
         self.create_widgets()
+        self.load_model()
+        
         self.preview_video()
     
     def select_output_directory(self):
@@ -122,34 +124,21 @@ class GestureRecognitionApp:
         ).pack(fill=tk.X, side=tk.BOTTOM)
     
     def load_model(self):
-        """Load the YOLOv10x model from local file"""
         try:
-            self.status_var.set("Loading YOLOv10x model...")
+            self.status_var.set("Loading YOLOv10 model...")
             self.root.update()
-        
-            # Path to your downloaded model file
-            model_path = 'Pre_trained/YOLO.pt'  # Update this path
-        
-            # Verify model file exists
+
+            model_path = 'Pre_trained/YOLO.pt'  # Ensure this is a YOLOv10 model
             if not os.path.exists(model_path):
                 messagebox.showerror("Error", f"Model file not found at: {model_path}")
-                self.root.destroy()
                 return
-        
-            # Load the YOLOv5 model with custom weights
-            self.model = torch.hub.load('ultralytics/yolov5', 'custom', 
-                                   path=model_path, 
-                                   force_reload=True)
-        
-            # Set device and evaluation mode
-            self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+            self.model = YOLO(model_path)  # Load YOLOv10 model
             self.model.to(self.device)
-            self.model.eval()
-        
-            self.status_var.set("YOLOv10x model loaded - Ready to record")
+            self.status_var.set("YOLOv10 model loaded - Ready to record")
+
         except Exception as e:
             messagebox.showerror("Error", f"Failed to load model: {str(e)}")
-        self.root.destroy()
     
     def toggle_recording(self):
         """Toggle recording state"""

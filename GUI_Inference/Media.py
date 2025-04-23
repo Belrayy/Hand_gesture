@@ -1,4 +1,5 @@
 import os
+from tkinter import messagebox
 import cv2
 import time
 from datetime import datetime
@@ -8,6 +9,7 @@ from PIL import Image, ImageTk
 import mediapipe as mp  # type: ignore
 from threading import Thread
 import math
+import webbrowser
 
 class VideoRecorderApp:
     def __init__(self, root):
@@ -38,12 +40,10 @@ class VideoRecorderApp:
         self.accumulated_time = 0  
         self.last_pause_time = 0
         
-        
         self.output_folder = self.show_initial_folder_dialog()
         if not self.output_folder:
             self.root.destroy()
             return
-        
         
         self.mp_hands = mp.solutions.hands
         self.hands = self.mp_hands.Hands(
@@ -53,9 +53,9 @@ class VideoRecorderApp:
             min_tracking_confidence=0.5)
         self.mp_drawing = mp.solutions.drawing_utils
         
+
         
         self.create_widgets()
-        
         
         self.cap = cv2.VideoCapture(0)
         if not self.cap.isOpened():
@@ -63,9 +63,9 @@ class VideoRecorderApp:
             self.root.destroy()
             return
         
-        
         self.update_preview()
     
+
     def show_initial_folder_dialog(self):
         """Show folder selection dialog before main window appears"""
         temp_root = tk.Tk()
@@ -82,9 +82,8 @@ class VideoRecorderApp:
         )
         
         if not folder:
-            messagebox.showwarning("Warning", "You must select a folder to continue") # type: ignore
+            messagebox.showwarning("Warning", "You must select a folder to continue")
             return ""
-        
         
         recordings_folder = os.path.join(folder, "Gesture_Recordings")
         os.makedirs(recordings_folder, exist_ok=True)
@@ -95,7 +94,12 @@ class VideoRecorderApp:
     def create_widgets(self):
         background_color = "#005f73"
         self.root.configure(bg=background_color)  
+        
+        # Create a container frame for the main content
+        self.main_container = tk.Frame(self.root, bg=background_color)
+        self.main_container.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True)
 
+        # Sidebar
         self.sidebar_icon = tk.Button(
             self.root, text="☰", font=("Arial", 18), bg="#333333", fg="white",
             command=self.toggle_sidebar
@@ -108,43 +112,43 @@ class VideoRecorderApp:
         # Sidebar options
         self.sidebar_buttons = []
         for idx, option in enumerate(["Home", "Gestures", "About"]):
-            if option == "About":
-                btn = tk.Button(
-                    self.sidebar_frame, text=option, font=("Arial", 14),
-                    bg="#f44336",
-                    fg="white", width=10, height=2,
-                    command=self.show_about_page
+            btn = tk.Button(
+                self.sidebar_frame, text=option, font=("Arial", 14),
+                bg="#4CAF50" if option == "Home" else "#f9c74f" if option == "Gestures" else "#f44336",
+                fg="white", width=10, height=2,
+                command=lambda: (
+                    self.show_gestures_page() if option == "Gestures" else
+                    self.show_about_page() if option == "About" else
+                    self.show_main_content()
                 )
-            else:
-                btn = tk.Button(
-                    self.sidebar_frame, text=option, font=("Arial", 14),
-                    bg="#4CAF50" if option == "Home" else "#f9c74f",
-                    fg="white", width=10, height=2,
-                    command=self.close_all_gui  # You can keep this or set to another function
-                )
+)
             btn.place(x=10, y=60 + idx*70)
             self.sidebar_buttons.append(btn)
     
-        self.preview_label = tk.Label(self.root, bg=background_color)
+        # Main content frame (for camera preview and controls)
+        self.main_content_frame = tk.Frame(self.main_container, bg=background_color)
+        self.main_content_frame.pack(fill=tk.BOTH, expand=True)
+        
+        self.preview_label = tk.Label(self.main_content_frame, bg=background_color)
         self.preview_label.pack()
     
-        status_frame = tk.Frame(self.root, bg=background_color)
-        status_frame.pack(pady=10)
+        self.status_frame = tk.Frame(self.main_content_frame, bg=background_color)
+        self.status_frame.pack(pady=10)
     
-        self.timer_label = tk.Label(status_frame, text="00:00:00", font=('Arial', 14), bg=background_color)
+        self.timer_label = tk.Label(self.status_frame, text="00:00:00", font=('Arial', 14), bg=background_color)
         self.timer_label.pack(side=tk.LEFT, padx=10)
     
-        self.status_label = tk.Label(status_frame, text="Ready", font=('Arial', 14), bg=background_color)
+        self.status_label = tk.Label(self.status_frame, text="Ready", font=('Arial', 14), bg=background_color)
         self.status_label.pack(side=tk.LEFT, padx=10)
     
-        self.gesture_label = tk.Label(self.root, text="Gesture: None", font=('Arial', 16), bg=background_color)
+        self.gesture_label = tk.Label(self.main_content_frame, text="Gesture: None", font=('Arial', 16), bg=background_color)
         self.gesture_label.pack(pady=5)
     
-        button_frame = tk.Frame(self.root, bg=background_color)
-        button_frame.pack(pady=10)
+        self.button_frame = tk.Frame(self.main_content_frame, bg=background_color)
+        self.button_frame.pack(pady=10)
     
         self.record_button = tk.Button(
-            button_frame, 
+            self.button_frame, 
             text="Start/Pause", 
             command=self.toggle_recording,
             bg="#4CAF50",
@@ -154,34 +158,132 @@ class VideoRecorderApp:
         )
         self.record_button.pack(side=tk.LEFT, padx=10)
     
-        # Add Full Stop button
         self.full_stop_button = tk.Button(
-            button_frame, 
+            self.button_frame, 
             text="Full Stop", 
             command=self.full_stop_recording,
             bg="#f44336",
             fg="white",
             font=('Arial', 12),
             width=15,
-            state=tk.DISABLED  # Disabled by default
+            state=tk.DISABLED
         )
         self.full_stop_button.pack(side=tk.LEFT, padx=10)
     
-        tk.Button(
-            button_frame, 
+        self.exit_button = tk.Button(
+            self.button_frame, 
             text="Exit", 
             command=self.close_app,
             bg="#333333",
             fg="white",
             font=('Arial', 12),
             width=15
-        ).pack(side=tk.LEFT)
+        )
+        self.exit_button.pack(side=tk.LEFT)
+
+        # About page frame (initially hidden)
+        self.about_frame = tk.Frame(self.main_container, bg=background_color)
+        tk.Label(self.about_frame, text="About Us", font=("Arial", 32), bg=background_color, fg="white").pack(pady=20)
+        for widget in self.about_frame.winfo_children():
+            widget.destroy()
+
+        tk.Label(self.about_frame, text="About Us", font=("Arial", 32), bg=background_color, fg="white").pack(pady=10)
+
+        left_group = tk.Frame(self.about_frame, bg=background_color)
+        left_group.pack(pady=10, padx=20, fill=tk.X)
+
+        left_qr_image = Image.open("../Icon/QR/git.png")
+        left_qr_photo = ImageTk.PhotoImage(left_qr_image)
+        left_qr_label = tk.Label(left_group, image=left_qr_photo, bg=background_color)
+        left_qr_label.image = left_qr_photo  # Keep a reference
+        left_qr_label.pack()  # Default side is TOP
+
+        left_link = tk.Label(left_group, text="Visit the GitHub Repo", font=("Arial", 14, "underline"), fg="cyan", bg=background_color, cursor="hand2")
+        left_link.pack(pady=(5, 0)) # Add some padding above the link
+        left_link.bind("<Button-1>", lambda e: open_link("https://github.com/Belrayy/Hand_gesture"))
+
+        # Frame for the right QR code and link
+        right_group = tk.Frame(self.about_frame, bg=background_color)
+        right_group.pack(pady=10, padx=20, fill=tk.X)
+
+        right_qr_image = Image.open("../Icon/QR/Web.png")
+        right_qr_photo = ImageTk.PhotoImage(right_qr_image)
+        right_qr_label = tk.Label(right_group, image=right_qr_photo, bg=background_color)
+        right_qr_label.image = right_qr_photo
+        right_qr_label.pack() # Default side is TOP
+
+        right_link = tk.Label(right_group, text="Visit Our Web Site", font=("Arial", 14, "underline"), fg="cyan", bg=background_color, cursor="hand2")
+        right_link.pack(pady=(5, 0)) # Add some padding above the link
+        right_link.bind("<Button-1>", lambda e: open_link("https://belrayy.github.io/Hand_gesture/Web_site/index.html"))
+
+        tk.Label(self.about_frame, text="We’re two passionate engineering students building Prometheus as our end-of-year project. \n Prometheus is more than just a project, it’s our vision of intuitive, touchless control in action.", font=("Arial", 12), bg=background_color, fg="white").pack(pady=10)
+
+        self.gestures_frame = tk.Frame(self.main_container, bg=background_color)
+        tk.Label(self.gestures_frame, text="Gesture Guide", font=("Arial", 32), bg=background_color, fg="white").pack(pady=20)
+        gesture_container = tk.Frame(self.gestures_frame, bg=background_color)
+        gesture_container.pack(fill=tk.BOTH, expand=True, padx=20, pady=10)
+
+        gestures_info = [
+            ("Open Hand", "All fingers extended"),
+            ("Fist", "All fingers closed"),
+            ("Thumbs Up", "Only thumb extended"),
+            ("Peace Sign", "Index and middle fingers extended"),
+            ("Pointing", "Only index finger extended"),
+            ("Hang Loose", "Thumb and pinky extended"),
+            ("Number Four", "All fingers except thumb extended"),
+            ("Number Three", "Index, middle, and ring fingers extended"),
+            ("Two", "Index and pinky fingers extended"),
+            ("Spider-Man", "Thumb, index, and pinky fingers extended"),
+            ("Rock-on", "Thumb, ring, and pinky fingers extended"),
+            ("Okay", "Thumb and index finger touching"),
+            ("Call Me", "Thumb extended and pinky raised"),
+            ("Victory", "Index and middle fingers extended (V sign)"),
+            ("Gun", "Index finger extended and thumb up")
+        ]
+    
+        for i, (gesture, desc) in enumerate(gestures_info):
+            row = i // 3
+            col = i % 3
+        
+            frame = tk.Frame(gesture_container, bg=background_color, bd=2, relief=tk.RIDGE)
+            frame.grid(row=row, column=col, padx=10, pady=10, sticky="nsew")
+        
+            tk.Label(frame, text=gesture, font=("Arial", 14, "bold"), 
+                    bg=background_color, fg="white").pack(pady=5)
+            tk.Label(frame, text=desc, font=("Arial", 12), 
+                    bg=background_color, fg="white", wraplength=200).pack(pady=5)
+        
+            gesture_container.grid_columnconfigure(col, weight=1)
+    
+        gesture_container.grid_rowconfigure((len(gestures_info) // 3) + 1, weight=1)
 
     def show_about_page(self):
-        for widget in self.root.winfo_children():
-            widget.destroy()
-        self.root.configure(bg="#005f73")
-        tk.Label(self.root, text="About", font=("Arial", 32), bg="#005f73", fg="white").pack(expand=True) 
+        self.main_content_frame.pack_forget()
+        
+        # Show about page and make it fill the space
+        self.about_frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
+        
+        # Ensure sidebar is visible
+        self.sidebar_frame.place(x=0, y=0)
+
+    def show_gestures_page(self):
+        self.main_content_frame.pack_forget()
+        self.about_frame.pack_forget()
+        self.gestures_frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
+        self.sidebar_frame.place(x=0, y=0)
+
+    def show_main_content(self):
+        self.about_frame.pack_forget()
+        self.gestures_frame.pack_forget()
+        self.main_content_frame.pack(fill=tk.BOTH, expand=True)
+        self.sidebar_frame.place(x=0, y=0)
+
+    def hide_main_content(self):
+        """Hide all main content widgets"""
+        self.preview_label.pack_forget()
+        self.status_label.pack_forget()
+        self.gesture_label.pack_forget()
+        # Add any other widgets that need to be hidden
 
     def toggle_sidebar(self):
         x = self.sidebar_frame.winfo_x()
@@ -189,6 +291,7 @@ class VideoRecorderApp:
             self.sidebar_frame.place(x=0, y=0)
         else:
             self.sidebar_frame.place(x=-200, y=0)
+        self.sidebar_icon.lift()
     
     def select_folder(self):
         folder_selected = filedialog.askdirectory()
@@ -424,6 +527,7 @@ class VideoRecorderApp:
             self.gesture_label.config(fg="orange")
         else:
             self.gesture_label.config(fg="black")
+
     
 
     def close_app(self):
@@ -436,9 +540,11 @@ class VideoRecorderApp:
             self.hands.close()
         self.root.destroy()
 
+def open_link(url):
+    webbrowser.open_new(url)
+
 if __name__ == "__main__":
     root = tk.Tk()
-    
     
     window_width = 1200
     window_height = 720

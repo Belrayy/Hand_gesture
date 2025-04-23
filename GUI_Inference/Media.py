@@ -95,6 +95,35 @@ class VideoRecorderApp:
     def create_widgets(self):
         background_color = "#005f73"
         self.root.configure(bg=background_color)  
+
+        self.sidebar_icon = tk.Button(
+            self.root, text="☰", font=("Arial", 18), bg="#333333", fg="white",
+            command=self.toggle_sidebar
+        )
+        self.sidebar_icon.place(x=10, y=10, width=40, height=40)
+
+        self.sidebar_frame = tk.Frame(self.root, bg=background_color, width=200, height=720)
+        self.sidebar_frame.place(x=-200, y=0)
+
+        # Sidebar options
+        self.sidebar_buttons = []
+        for idx, option in enumerate(["Home", "Gestures", "About"]):
+            if option == "About":
+                btn = tk.Button(
+                    self.sidebar_frame, text=option, font=("Arial", 14),
+                    bg="#f44336",
+                    fg="white", width=10, height=2,
+                    command=self.show_about_page
+                )
+            else:
+                btn = tk.Button(
+                    self.sidebar_frame, text=option, font=("Arial", 14),
+                    bg="#4CAF50" if option == "Home" else "#f9c74f",
+                    fg="white", width=10, height=2,
+                    command=self.close_all_gui  # You can keep this or set to another function
+                )
+            btn.place(x=10, y=60 + idx*70)
+            self.sidebar_buttons.append(btn)
     
         self.preview_label = tk.Label(self.root, bg=background_color)
         self.preview_label.pack()
@@ -147,6 +176,19 @@ class VideoRecorderApp:
             font=('Arial', 12),
             width=15
         ).pack(side=tk.LEFT)
+
+    def show_about_page(self):
+        for widget in self.root.winfo_children():
+            widget.destroy()
+        self.root.configure(bg="#005f73")
+        tk.Label(self.root, text="About", font=("Arial", 32), bg="#005f73", fg="white").pack(expand=True) 
+
+    def toggle_sidebar(self):
+        x = self.sidebar_frame.winfo_x()
+        if x < 0:
+            self.sidebar_frame.place(x=0, y=0)
+        else:
+            self.sidebar_frame.place(x=-200, y=0)
     
     def select_folder(self):
         folder_selected = filedialog.askdirectory()
@@ -185,6 +227,12 @@ class VideoRecorderApp:
         # Show confirmation message
         tk.messagebox.showinfo("Recording Saved", "The recording has been saved successfully.")
     
+    def close_all_gui(self):
+        if self.cap:
+            self.cap.release()
+        if self.hands:
+            self.hands.close()
+        self.root.destroy()
 
     def start_recording(self):
         if not hasattr(self, 'output_file') or self.output_file is None:

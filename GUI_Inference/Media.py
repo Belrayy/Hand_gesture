@@ -12,15 +12,31 @@ import math
 class VideoRecorderApp:
     def __init__(self, root):
         self.root = root
-        self.root.title("Hand Gesture Video Recorder")
+        self.root.title("Prometheus")
         
-        
+        try:
+            subdirectory_icon_path = "../Icon/Img/icon.ico"
+            icon_path = os.path.join(os.path.dirname(__file__), subdirectory_icon_path)
+            self.root.iconbitmap(icon_path)
+        except:
+            try:
+                subdirectory_icon_path = "../Icon/Img/Hand_gesture_app.png"
+                icon_path = os.path.join(os.path.dirname(__file__), subdirectory_icon_path)
+                img = tk.PhotoImage(file=icon_path)
+                self.root.tk.call('wm', 'iconphoto', self.root._w, img)
+            except:
+                pass
+
         self.recording = False
         self.start_time = None
         self.output_folder = ""
         self.cap = None
         self.out = None
         self.hands = None
+
+        self.paused = False  
+        self.accumulated_time = 0  
+        self.last_pause_time = 0
         
         
         self.output_folder = self.show_initial_folder_dialog()
@@ -55,8 +71,9 @@ class VideoRecorderApp:
         temp_root = tk.Tk()
         temp_root.withdraw()  
         
-        
-        initial_dir = os.path.dirname(os.path.abspath(__file__))
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        subdirectory = "data"
+        initial_dir = os.path.join(script_dir, subdirectory)
         
         folder = filedialog.askdirectory(
             title="Select Output Folder for Recordings",
@@ -76,32 +93,30 @@ class VideoRecorderApp:
         return recordings_folder
     
     def create_widgets(self):
-        """Create GUI elements without folder selection UI"""
-        
-        self.preview_label = tk.Label(self.root)
+        background_color = "#005f73"
+        self.root.configure(bg=background_color)  
+    
+        self.preview_label = tk.Label(self.root, bg=background_color)
         self.preview_label.pack()
-        
-        
-        status_frame = tk.Frame(self.root)
+    
+        status_frame = tk.Frame(self.root, bg=background_color)
         status_frame.pack(pady=10)
-        
-        self.timer_label = tk.Label(status_frame, text="00:00:00", font=('Arial', 14))
+    
+        self.timer_label = tk.Label(status_frame, text="00:00:00", font=('Arial', 14), bg=background_color)
         self.timer_label.pack(side=tk.LEFT, padx=10)
-        
-        self.status_label = tk.Label(status_frame, text="Ready", font=('Arial', 14))
+    
+        self.status_label = tk.Label(status_frame, text="Ready", font=('Arial', 14), bg=background_color)
         self.status_label.pack(side=tk.LEFT, padx=10)
-        
-        
-        self.gesture_label = tk.Label(self.root, text="Gesture: None", font=('Arial', 16))
+    
+        self.gesture_label = tk.Label(self.root, text="Gesture: None", font=('Arial', 16), bg=background_color)
         self.gesture_label.pack(pady=5)
-        
-        
-        button_frame = tk.Frame(self.root)
+    
+        button_frame = tk.Frame(self.root, bg=background_color)
         button_frame.pack(pady=10)
-        
+    
         self.record_button = tk.Button(
             button_frame, 
-            text="Start Recording", 
+            text="Start/Pause", 
             command=self.toggle_recording,
             bg="#4CAF50",
             fg="white",
@@ -109,12 +124,25 @@ class VideoRecorderApp:
             width=15
         )
         self.record_button.pack(side=tk.LEFT, padx=10)
-        
+    
+        # Add Full Stop button
+        self.full_stop_button = tk.Button(
+            button_frame, 
+            text="Full Stop", 
+            command=self.full_stop_recording,
+            bg="#f44336",
+            fg="white",
+            font=('Arial', 12),
+            width=15,
+            state=tk.DISABLED  # Disabled by default
+        )
+        self.full_stop_button.pack(side=tk.LEFT, padx=10)
+    
         tk.Button(
             button_frame, 
             text="Exit", 
             command=self.close_app,
-            bg="#f44336",
+            bg="#333333",
             fg="white",
             font=('Arial', 12),
             width=15
@@ -129,49 +157,86 @@ class VideoRecorderApp:
     
     def toggle_recording(self):
         if not self.recording:
-            if not self.output_folder:
-                tk.messagebox.showwarning("Warning", "Please select an output folder first")
-                return
-            
-            
+            # Start or resume recording
             self.start_recording()
-            self.record_button.config(text="Stop Recording")
+            self.record_button.config(text="Pause")
+            self.full_stop_button.config(state=tk.NORMAL)  # Enable full stop button
             self.status_label.config(text="Recording", fg="red")
         else:
-            
-            self.stop_recording()
-            self.record_button.config(text="Start Recording")
-            self.status_label.config(text="Ready", fg="black")
+            if not self.paused:
+                # Pause recording
+                self.pause_recording()
+                self.record_button.config(text="Resume")
+                self.status_label.config(text="Paused", fg="orange")
+            else:
+                # Resume recording
+                self.resume_recording()
+                self.record_button.config(text="Pause")
+                self.status_label.config(text="Recording", fg="red")
+
+    def full_stop_recording(self):
+        """Completely stop and finalize the recording"""
+        self.stop_recording()
+        self.record_button.config(text="Start/Pause")
+        self.full_stop_button.config(state=tk.DISABLED)  # Disable full stop button
+        self.status_label.config(text="Ready", fg="black")
+        self.timer_label.config(text="00:00:00")
     
+        # Show confirmation message
+        tk.messagebox.showinfo("Recording Saved", "The recording has been saved successfully.")
+    
+
     def start_recording(self):
+        if not hasattr(self, 'output_file') or self.output_file is None:
+            # Only create new file if we don't have one
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            self.output_file = os.path.join(self.output_folder, f"recording_{timestamp}.avi")
+        
+            frame_width = int(self.cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+            frame_height = int(self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+            fps = self.cap.get(cv2.CAP_PROP_FPS)
+        
+            fourcc = cv2.VideoWriter_fourcc(*'XVID')
+            self.out = cv2.VideoWriter(self.output_file, fourcc, fps, (frame_width, frame_height))
+
         self.recording = True
-        self.start_time = time.time()
-        
-        
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        output_file = os.path.join(self.output_folder, f"recording_{timestamp}.avi")
-        
-        
-        frame_width = int(self.cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-        frame_height = int(self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-        fps = self.cap.get(cv2.CAP_PROP_FPS)
-        
-        
-        fourcc = cv2.VideoWriter_fourcc(*'XVID')
-        self.out = cv2.VideoWriter(output_file, fourcc, fps, (frame_width, frame_height))
-        
-        
+        self.paused = False
+        self.start_time = time.time() - self.accumulated_time
         self.update_timer()
-    
-    def stop_recording(self):
+
+    def pause_recording(self):
+        self.paused = True
         self.recording = False
+        self.accumulated_time += time.time() - self.start_time
+        if self.out:
+            self.out.release()  # Release the writer when pausing
+
+    def resume_recording(self):
+        if self.out is None:
+            # Recreate the writer if needed
+            frame_width = int(self.cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+            frame_height = int(self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+            fps = self.cap.get(cv2.CAP_PROP_FPS)
+            fourcc = cv2.VideoWriter_fourcc(*'XVID')
+            self.out = cv2.VideoWriter(self.output_file, fourcc, fps, (frame_width, frame_height))
+
+        self.recording = True
+        self.paused = False
+        self.start_time = time.time() - self.accumulated_time
+
+    def stop_recording(self):
+        """Internal method to stop recording and clean up"""
+        self.recording = False
+        self.paused = False
+        self.accumulated_time = 0
         if self.out:
             self.out.release()
             self.out = None
+        self.output_file = None
     
     def update_timer(self):
         if self.recording:
-            elapsed = time.time() - self.start_time
+            elapsed = self.accumulated_time + (time.time() - self.start_time)
             hours, remainder = divmod(elapsed, 3600)
             minutes, seconds = divmod(remainder, 60)
             self.timer_label.config(text=f"{int(hours):02d}:{int(minutes):02d}:{int(seconds):02d}")
@@ -223,9 +288,6 @@ class VideoRecorderApp:
                 gesture = self.detect_gesture(hand_landmarks)
         
         
-        cv2.putText(frame, f"Gesture: {gesture}", (10, 30), 
-                   cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
-        
         return frame, gesture
     
     def detect_gesture(self, hand_landmarks):
@@ -275,7 +337,7 @@ class VideoRecorderApp:
             return "Hang Loose"
         if fingers == [False, True, True, True, True]:
             return "Number Four"
-        if fingers == [False, True, True, False, True]:
+        if fingers == [False, True, True, True, False]:
             return "Number Three"
         if fingers == [False, True, False, False, True]:
             return "Two"
@@ -315,8 +377,11 @@ class VideoRecorderApp:
         else:
             self.gesture_label.config(fg="black")
     
+
     def close_app(self):
-        self.stop_recording()
+        # Make sure to stop properly when closing
+        if self.recording or self.paused:
+            self.stop_recording()
         if self.cap:
             self.cap.release()
         if self.hands:
@@ -327,8 +392,8 @@ if __name__ == "__main__":
     root = tk.Tk()
     
     
-    window_width = 800
-    window_height = 600
+    window_width = 1200
+    window_height = 720
     screen_width = root.winfo_screenwidth()
     screen_height = root.winfo_screenheight()
     center_x = int(screen_width/2 - window_width/2)

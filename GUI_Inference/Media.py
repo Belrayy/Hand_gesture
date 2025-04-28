@@ -122,60 +122,65 @@ class VideoRecorderApp:
                 
             btn.place(x=10, y=60 + idx*70)
             self.sidebar_buttons.append(btn)
-    
+
         # Main content frame (for camera preview and controls)
         self.main_content_frame = tk.Frame(self.main_container, bg=background_color)
         self.main_content_frame.pack(fill=tk.BOTH, expand=True)
         
         self.preview_label = tk.Label(self.main_content_frame, bg=background_color)
         self.preview_label.pack()
-    
+
         self.status_frame = tk.Frame(self.main_content_frame, bg=background_color)
         self.status_frame.pack(pady=10)
-    
+
         self.timer_label = tk.Label(self.status_frame, text="00:00:00", font=('Arial', 14), bg=background_color)
         self.timer_label.pack(side=tk.LEFT, padx=10)
-    
+
         self.status_label = tk.Label(self.status_frame, text="Ready", font=('Arial', 14), bg=background_color)
         self.status_label.pack(side=tk.LEFT, padx=10)
-    
+
         self.gesture_label = tk.Label(self.main_content_frame, text="Gesture: None", font=('Arial', 16), bg=background_color)
         self.gesture_label.pack(pady=5)
-    
+
         self.button_frame = tk.Frame(self.main_content_frame, bg=background_color)
         self.button_frame.pack(pady=10)
-    
+
+        # Load images for buttons
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        start_pause_img_path = os.path.join(script_dir, "../Icon/Video_Icon/start.png")
+        stop_img_path = os.path.join(script_dir, "../Icon/Video_Icon/stop.png")
+        exit_img_path = os.path.join(script_dir, "../Icon/Video_Icon/logout.png")
+
+        self.start_pause_img = tk.PhotoImage(file=start_pause_img_path)
+        self.stop_img = tk.PhotoImage(file=stop_img_path)
+        self.exit_img = tk.PhotoImage(file=exit_img_path)
+
+        # Replace buttons with images
         self.record_button = tk.Button(
             self.button_frame, 
-            text="Start/Pause", 
+            image=self.start_pause_img, 
             command=self.toggle_recording,
-            bg="#4CAF50",
-            fg="white",
-            font=('Arial', 12),
-            width=15
+            bg=background_color,
+            borderwidth=0
         )
         self.record_button.pack(side=tk.LEFT, padx=10)
-    
+
         self.full_stop_button = tk.Button(
             self.button_frame, 
-            text="Full Stop", 
+            image=self.stop_img, 
             command=self.full_stop_recording,
-            bg="#f44336",
-            fg="white",
-            font=('Arial', 12),
-            width=15,
-            state=tk.DISABLED
+            bg=background_color,
+            borderwidth=0,
+            state=tk.DISABLED  # Initially disabled
         )
         self.full_stop_button.pack(side=tk.LEFT, padx=10)
-    
+
         self.exit_button = tk.Button(
             self.button_frame, 
-            text="Exit", 
+            image=self.exit_img, 
             command=self.close_app,
-            bg="#333333",
-            fg="white",
-            font=('Arial', 12),
-            width=15
+            bg=background_color,
+            borderwidth=0
         )
         self.exit_button.pack(side=tk.LEFT)
 

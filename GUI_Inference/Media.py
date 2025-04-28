@@ -222,60 +222,45 @@ class VideoRecorderApp:
         # Gestures page frame (initially hidden)
         self.gestures_frame = tk.Frame(self.main_container, bg=background_color)
         tk.Label(self.gestures_frame, text="Gesture Guide", font=("Arial", 32), bg=background_color, fg="white").pack(pady=20)
-        
-        # Create a canvas with scrollbar for gestures
-        gesture_canvas = tk.Canvas(self.gestures_frame, bg=background_color, highlightthickness=0)
-        scrollbar = ttk.Scrollbar(self.gestures_frame, orient="vertical", command=gesture_canvas.yview)
-        scrollable_frame = tk.Frame(gesture_canvas, bg=background_color)
 
-        scrollable_frame.bind(
-            "<Configure>",
-            lambda e: gesture_canvas.configure(
-                scrollregion=gesture_canvas.bbox("all")
-            )
-        )
-
-        gesture_canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
-        gesture_canvas.configure(yscrollcommand=scrollbar.set)
-
-        gesture_canvas.pack(side="left", fill="both", expand=True)
-        scrollbar.pack(side="right", fill="y")
-
-        # List of gestures and their descriptions
-        gestures_info = [
-            ("Open Hand", "All fingers extended"),
-            ("Fist", "All fingers closed"),
-            ("Thumbs Up", "Only thumb extended"),
-            ("Peace Sign", "Index and middle fingers extended"),
-            ("Pointing", "Only index finger extended"),
-            ("Hang Loose", "Thumb and pinky extended"),
-            ("Number Four", "All fingers except thumb extended"),
-            ("Number Three", "Index, middle, and ring fingers extended"),
-            ("Two", "Index and pinky fingers extended"),
-            ("Spider-Man", "Thumb, index, and pinky fingers extended"),
-            ("Rock-on", "Thumb, ring, and pinky fingers extended"),
-            ("Okay", "Thumb and index finger touching"),
-            ("Call Me", "Thumb extended and pinky raised"),
-            ("Victory", "Index and middle fingers extended (V sign)"),
-            ("Gun", "Index finger extended and thumb up")
+        self.gestures_info = [
+            ("Open Hand", "All fingers extended", "../Icon/Gestures/open_hand.jpg"),
+            ("Fist", "All fingers closed", "../Icon/Gestures/fist.jpg"),
+            ("Thumbs Up", "Only thumb extended", "../Icon/Gestures/thumb_up.jpg"),
+            ("Peace Sign", "Index and middle fingers extended", "../Icon/Gestures/peace_sign.jpg"),
+            ("Pointing", "Only index finger extended", "../Icon/Gestures/pointing.jpg"),
+            ("Hang Loose", "Thumb and pinky extended", "../Icon/Gestures/call.jpg"),
+            ("Number Four", "All fingers except thumb extended", "../Icon/Gestures/four.jpg"),
+            ("Number Three", "Index, middle, and ring fingers extended", "../Icon/Gestures/three.jpg"),
+            ("Two", "Index and pinky fingers extended", "../Icon/Gestures/two.jpg"),
+            ("Spider-Man", "Thumb, index, and pinky fingers extended", "../Icon/Gestures/spiderman.jpg"),
+            ("Rock-on", "Thumb, ring, and pinky fingers extended", "../Icon/Gestures/rock.jpg"),
+            ("Okay", "Thumb and index finger touching", "../Icon/Gestures/ok.jpg"),
+            ("Gun", "Index finger extended and thumb up", "../Icon/Gestures/gun.jpg")
         ]
+        self.gesture_page_index = 0
 
-        # Display gestures in a grid
-        for i, (gesture, desc) in enumerate(gestures_info):
-            row = i // 3
-            col = i % 3
-            
-            frame = tk.Frame(scrollable_frame, bg=background_color, bd=2, relief=tk.RIDGE)
-            frame.grid(row=row, column=col, padx=10, pady=10, sticky="nsew")
-            
-            tk.Label(frame, text=gesture, font=("Arial", 14, "bold"), 
-                    bg=background_color, fg="white").pack(pady=5)
-            tk.Label(frame, text=desc, font=("Arial", 12), 
-                    bg=background_color, fg="white", wraplength=200).pack(pady=5)
-            
-            scrollable_frame.grid_columnconfigure(col, weight=1)
-        
-        scrollable_frame.grid_rowconfigure((len(gestures_info) // 3) + 1, weight=1)
+        # Navigation frame
+        nav_frame = tk.Frame(self.gestures_frame, bg=background_color)
+        nav_frame.pack(pady=30)
+
+        self.left_arrow = tk.Button(nav_frame, text="←", font=("Arial", 24), width=3, command=self.prev_gesture)
+        self.left_arrow.grid(row=0, column=0, padx=10)
+
+        # Gesture display area
+        self.gesture_img_label = tk.Label(nav_frame, bg=background_color)
+        self.gesture_img_label.grid(row=0, column=1, padx=10)
+
+        self.gesture_desc_label = tk.Label(nav_frame, text="", font=("Arial", 16), bg=background_color, fg="white", wraplength=400, justify="center")
+        self.gesture_desc_label.grid(row=1, column=1, pady=10)
+
+        self.page_indicator = tk.Label(nav_frame, text="", font=("Arial", 14), bg=background_color, fg="white")
+        self.page_indicator.grid(row=2, column=1, pady=5)
+
+        self.right_arrow = tk.Button(nav_frame, text="→", font=("Arial", 24), width=3, command=self.next_gesture)
+        self.right_arrow.grid(row=0, column=2, padx=10)
+
+        self.update_gesture_page()
 
     def show_about_page(self):
         self.main_content_frame.pack_forget()
@@ -288,6 +273,45 @@ class VideoRecorderApp:
         self.about_frame.pack_forget()
         self.gestures_frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
         self.sidebar_frame.place(x=0, y=0)
+
+    def update_gesture_page(self):
+        gesture, desc, img_path = self.gestures_info[self.gesture_page_index]
+    
+        try:
+            # Get absolute path by joining with script directory
+            script_dir = os.path.dirname(os.path.abspath(__file__))
+            full_img_path = os.path.join(script_dir, img_path)
+        
+            img = Image.open(full_img_path)
+            img = img.resize((200, 200), Image.LANCZOS)  # Updated from ANTIALIAS to LANCZOS
+            photo = ImageTk.PhotoImage(img)
+            self.gesture_img_label.config(image=photo, text="")
+            self.gesture_img_label.image = photo
+        except Exception as e:
+            print(f"Error loading image: {e}")  # Debug output
+            self.gesture_img_label.config(
+                image="", 
+                text=f"Image not found\n{img_path}", 
+                font=("Arial", 12), 
+                fg="red"
+            )
+            self.gesture_img_label.image = None
+
+        self.gesture_desc_label.config(text=f"{gesture}\n\n{desc}")
+        self.page_indicator.config(text=f"Gesture {self.gesture_page_index + 1} of {len(self.gestures_info)}")
+    
+        self.left_arrow.config(state=tk.DISABLED if self.gesture_page_index == 0 else tk.NORMAL)
+        self.right_arrow.config(state=tk.DISABLED if self.gesture_page_index == len(self.gestures_info) - 1 else tk.NORMAL)
+
+    def prev_gesture(self):
+        if self.gesture_page_index > 0:
+            self.gesture_page_index -= 1
+            self.update_gesture_page()
+
+    def next_gesture(self):
+        if self.gesture_page_index < len(self.gestures_info) - 1:
+            self.gesture_page_index += 1
+            self.update_gesture_page()
 
     def show_main_content(self):
         self.about_frame.pack_forget()

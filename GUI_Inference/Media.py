@@ -438,7 +438,9 @@ class VideoRecorderApp:
             self.timer_label.config(text=f"{int(hours):02d}:{int(minutes):02d}:{int(seconds):02d}")
             self.root.after(1000, self.update_timer)
     
+    
     def update_preview(self):
+
         ret, frame = self.cap.read()
         if ret:
             frame = cv2.flip(frame, 1)
@@ -544,8 +546,21 @@ class VideoRecorderApp:
         
         if gesture == "Open Hand":
             self.gesture_label.config(fg="green")
-        elif gesture == "Fist":
+            if not self.recording:  # Start recording if not already recording
+                self.start_recording()
+                self.status_label.config(text="Recording", fg="red")
+                self.record_button.config(text="Pause")
+                self.full_stop_button.config(state=tk.NORMAL)  # Enable full stop button
+        elif gesture in ["Fist", "Call Me"]:
             self.gesture_label.config(fg="red")
+            if self.recording and not self.paused:  # Pause recording if currently recording
+                self.pause_recording()
+                self.status_label.config(text="Paused", fg="orange")
+                self.record_button.config(text="Resume")
+            elif self.recording and self.paused:  # Resume recording if currently paused
+                self.resume_recording()
+                self.status_label.config(text="Recording", fg="red")
+                self.record_button.config(text="Pause")
         elif gesture == "Thumbs Up":
             self.gesture_label.config(fg="blue")
         elif gesture == "Peace Sign":

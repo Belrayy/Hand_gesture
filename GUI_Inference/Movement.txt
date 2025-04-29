@@ -47,3 +47,17 @@ That's a fun and creative gesture set! Since you're working on gesture-based PC 
 
 ---
 
+open hand -> start
+call  -> resume
+Fist -> pause
+Ok -> Stop
+gun -> exit app(kill)
+pointing -> open/close side bar
+two -> show Gestures
+Three-> show about
+four-> turn off cam
+middle finger->easter egg
+peace Sign-> pnl logo
+Rock -> reverse camera feed
+spiderman -> web
+thumb up -> display like

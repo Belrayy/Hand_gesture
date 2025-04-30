@@ -61,3 +61,7 @@ peace Sign-> pnl logo
 Rock -> reverse camera feed
 spiderman -> web
 thumb up -> display like
+
+pyinstaller --onefile --noconsole --clean --icon=../Icon/Img/icon.ico --name=Prometheus Media.py
+pyinstaller --onefile --noconsole --clean --icon=../../../Icon/Img/icon.ico --name=Prometheus ../../Media.py --hidden-import=mediapipe
+pyinstaller --onefile --noconsole --clean --icon=../../../Icon/Img/icon.ico --name=Prometheus ../../Media.py

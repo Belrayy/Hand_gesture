@@ -38,6 +38,7 @@ class VideoRecorderApp:
         self.paused = False  
         self.accumulated_time = 0  
         self.last_pause_time = 0
+        self.overlay_image = None
         
         self.output_folder = self.show_initial_folder_dialog()
         if not self.output_folder:
@@ -56,7 +57,7 @@ class VideoRecorderApp:
         
         self.cap = cv2.VideoCapture(0)
         if not self.cap.isOpened():
-            messagebox.showerror("Error", "Could not open video device") # type: ignore
+            messagebox.showerror("Error", "Could not open video device")
             self.root.destroy()
             return
         
@@ -192,7 +193,7 @@ class VideoRecorderApp:
         left_group.pack(pady=10, padx=20, fill=tk.X)
 
         try:
-            left_qr_image = Image.open("../Icon/QR/git.png")
+            left_qr_image = Image.open(os.path.join(script_dir, "../Icon/QR/git.png"))
             left_qr_photo = ImageTk.PhotoImage(left_qr_image)
             left_qr_label = tk.Label(left_group, image=left_qr_photo, bg=background_color)
             left_qr_label.image = left_qr_photo  # Keep a reference
@@ -209,7 +210,7 @@ class VideoRecorderApp:
         right_group.pack(pady=10, padx=20, fill=tk.X)
 
         try:
-            right_qr_image = Image.open("../Icon/QR/Web.png")
+            right_qr_image = Image.open(os.path.join(script_dir, "../Icon/QR/Web.png"))
             right_qr_photo = ImageTk.PhotoImage(right_qr_image)
             right_qr_label = tk.Label(right_group, image=right_qr_photo, bg=background_color)
             right_qr_label.image = right_qr_photo
@@ -288,12 +289,12 @@ class VideoRecorderApp:
             full_img_path = os.path.join(script_dir, img_path)
         
             img = Image.open(full_img_path)
-            img = img.resize((200, 200), Image.LANCZOS)  # Updated from ANTIALIAS to LANCZOS
+            img = img.resize((200, 200), Image.LANCZOS)
             photo = ImageTk.PhotoImage(img)
             self.gesture_img_label.config(image=photo, text="")
             self.gesture_img_label.image = photo
         except Exception as e:
-            print(f"Error loading image: {e}")  # Debug output
+            print(f"Error loading image: {e}")
             self.gesture_img_label.config(
                 image="", 
                 text=f"Image not found\n{img_path}", 
@@ -438,41 +439,25 @@ class VideoRecorderApp:
             self.timer_label.config(text=f"{int(hours):02d}:{int(minutes):02d}:{int(seconds):02d}")
             self.root.after(1000, self.update_timer)
     
-    
-    def update_preview(self):
-
-        ret, frame = self.cap.read()
-        if ret:
-            frame = cv2.flip(frame, 1)
-            processed_frame, gesture = self.process_frame(frame)
-            self.update_gesture_display(gesture)
-            
-            if self.recording and self.out:
-                self.out.write(cv2.flip(frame, 1))  
-            
-            processed_frame = cv2.cvtColor(processed_frame, cv2.COLOR_BGR2RGB)
-            img = Image.fromarray(processed_frame)
-            imgtk = ImageTk.PhotoImage(image=img)
-            
-            self.preview_label.imgtk = imgtk
-            self.preview_label.configure(image=imgtk)
-        
-        self.root.after(10, self.update_preview)
-    
     def process_frame(self, frame):
         gesture = "None"
         rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         results = self.hands.process(rgb_frame)
         self.hands.last_results = results
-        
+
         if results.multi_hand_landmarks:
             for hand_landmarks in results.multi_hand_landmarks:
                 self.mp_drawing.draw_landmarks(
                     frame, hand_landmarks, self.mp_hands.HAND_CONNECTIONS)
                 gesture = self.detect_gesture(hand_landmarks)
-        
+
+        # Add overlay image or video if specified
+        if gesture == "Spider-Man":
+            video_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "../Icon/Video_Icon/spiderman.mp4")
+            frame = self.overlay_video_with_chroma_key(frame, video_path)
+
         return frame, gesture
-    
+
     def detect_gesture(self, hand_landmarks):
         handedness = "Right"
         if hasattr(self.hands, 'last_results') and hasattr(self.hands.last_results, 'multi_handedness'):
@@ -524,8 +509,6 @@ class VideoRecorderApp:
             return "Two"
         if fingers == [True, False, True, False, True]:
             return "Spider-Man"
-        if fingers == [True, False, False, True, True]:
-            return "Rock-on"
         if fingers == [False, True, True, False, False] and self._thumb_touching_index(landmarks):
             return "Okay"
         if fingers == [True, False, False, False, False] and self._pinky_extended(landmarks):
@@ -543,34 +526,70 @@ class VideoRecorderApp:
     
     def update_gesture_display(self, gesture):
         self.gesture_label.config(text=f"Gesture: {gesture}")
+        self.overlay_image = None
         
         if gesture == "Open Hand":
             self.gesture_label.config(fg="green")
-            if not self.recording:  # Start recording if not already recording
+            if not self.recording:
                 self.start_recording()
                 self.status_label.config(text="Recording", fg="red")
                 self.record_button.config(text="Pause")
-                self.full_stop_button.config(state=tk.NORMAL)  # Enable full stop button
+                self.full_stop_button.config(state=tk.NORMAL)
         elif gesture in ["Fist", "Call Me"]:
             self.gesture_label.config(fg="red")
-            if self.recording and not self.paused:  # Pause recording if currently recording
+            if self.recording and not self.paused:
                 self.pause_recording()
                 self.status_label.config(text="Paused", fg="orange")
                 self.record_button.config(text="Resume")
-            elif self.recording and self.paused:  # Resume recording if currently paused
+            elif self.recording and self.paused:
                 self.resume_recording()
                 self.status_label.config(text="Recording", fg="red")
                 self.record_button.config(text="Pause")
-        elif gesture == "Thumbs Up":
+        elif gesture == "Gun":
+            self.gesture_label.config(fg="black")
+            self.close_app()
+        elif gesture == "Two":
             self.gesture_label.config(fg="blue")
-        elif gesture == "Peace Sign":
+            self.show_gestures_page()
+        elif gesture == "Number Three":
             self.gesture_label.config(fg="purple")
+            self.show_about_page()
         elif gesture == "Pointing":
             self.gesture_label.config(fg="orange")
+            self.toggle_sidebar()
+        elif gesture == "Thumbs Up":
+            self.gesture_label.config(fg="blue")
+            script_dir = os.path.dirname(os.path.abspath(__file__))
+            self.overlay_image = os.path.join(script_dir, "../Icon/Video_Icon/like.png")
+        elif gesture == "Peace Sign":
+            self.gesture_label.config(fg="purple")
+            script_dir = os.path.dirname(os.path.abspath(__file__))
+            self.overlay_image = os.path.join(script_dir, "../Icon/Video_Icon/peace.png")
         else:
             self.gesture_label.config(fg="black")
 
+    def update_preview(self):
+        ret, frame = self.cap.read()
+        if ret:
+            frame = cv2.flip(frame, 1)
+            processed_frame, gesture = self.process_frame(frame)
+            self.update_gesture_display(gesture)
+            
+            if self.recording and self.out:
+                self.out.write(cv2.flip(frame, 1))  
+            
+            processed_frame = cv2.cvtColor(processed_frame, cv2.COLOR_BGR2RGB)
+            img = Image.fromarray(processed_frame)
+            imgtk = ImageTk.PhotoImage(image=img)
+            
+            self.preview_label.imgtk = imgtk
+            self.preview_label.configure(image=imgtk)
+        
+        self.root.after(10, self.update_preview)
+
     def close_app(self):
+        if hasattr(self, 'spiderman_video') and self.spiderman_video is not None:
+            self.spiderman_video.release()
         if self.recording or self.paused:
             self.stop_recording()
         if self.cap:
@@ -579,8 +598,64 @@ class VideoRecorderApp:
             self.hands.close()
         self.root.destroy()
 
+    def _thumb_touching_index(self, landmarks):
+        thumb_tip = landmarks[4]
+        index_tip = landmarks[8]
+        distance = math.sqrt((thumb_tip.x - index_tip.x)**2 + (thumb_tip.y - index_tip.y)**2)
+        return distance < 0.05
+
+    def _pinky_extended(self, landmarks):
+        return landmarks[20].y < landmarks[18].y < landmarks[17].y
+
+    def _flat_palm(self, landmarks):
+        # Check if all finger tips are roughly in a straight line
+        tips = [landmarks[i] for i in [4, 8, 12, 16, 20]]
+        y_coords = [tip.y for tip in tips]
+        return max(y_coords) - min(y_coords) < 0.1
+
+    def _index_extended_only(self, landmarks):
+        # Check if only index finger is extended
+        return (landmarks[8].y < landmarks[6].y < landmarks[5].y and
+                not (landmarks[12].y < landmarks[10].y < landmarks[9].y) and
+                not (landmarks[16].y < landmarks[14].y < landmarks[13].y) and
+                not (landmarks[20].y < landmarks[18].y < landmarks[17].y))
+
+    def overlay_video_with_chroma_key(self, frame, video_path, position=(50, 50)):
+        if not hasattr(self, 'spiderman_video') or self.spiderman_video is None:
+            self.spiderman_video = cv2.VideoCapture(video_path)
+
+        ret, overlay_frame = self.spiderman_video.read()
+        if not ret:
+            # Restart the video if it ends
+            self.spiderman_video.set(cv2.CAP_PROP_POS_FRAMES, 0)
+            ret, overlay_frame = self.spiderman_video.read()
+
+        if overlay_frame is not None:
+            # Resize the overlay frame to a smaller size
+            overlay_frame = cv2.resize(overlay_frame, (200, 200))
+
+            # Apply chroma key (remove green background)
+            hsv = cv2.cvtColor(overlay_frame, cv2.COLOR_BGR2HSV)
+            lower_green = (35, 55, 55)
+            upper_green = (90, 255, 255)
+            mask = cv2.inRange(hsv, lower_green, upper_green)
+            mask_inv = cv2.bitwise_not(mask)
+
+            # Extract the foreground and background
+            overlay_fg = cv2.bitwise_and(overlay_frame, overlay_frame, mask=mask_inv)
+            roi = frame[position[1]:position[1] + overlay_frame.shape[0], position[0]:position[0] + overlay_frame.shape[1]]
+            roi_bg = cv2.bitwise_and(roi, roi, mask=mask)
+
+            # Combine the foreground and background
+            combined = cv2.add(roi_bg, overlay_fg)
+            frame[position[1]:position[1] + overlay_frame.shape[0], position[0]:position[0] + overlay_frame.shape[1]] = combined
+
+        return frame
+
 def open_link(url):
     webbrowser.open_new(url)
+
+
 
 if __name__ == "__main__":
     root = tk.Tk()

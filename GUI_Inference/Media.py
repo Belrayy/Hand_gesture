@@ -6,7 +6,7 @@ from datetime import datetime
 import tkinter as tk
 from tkinter import filedialog, ttk
 from PIL import Image, ImageTk
-import mediapipe as mp  # type: ignore
+import mediapipe as mp
 from threading import Thread
 import math
 import webbrowser
